@@ -13,11 +13,10 @@ class AdapterFlower : RecyclerView.Adapter<AdapterFlower.MyViewHolder>() {
     private var list = emptyList<ModelFlower>()
 
     private var onItemClick: ((ModelFlower) -> Unit)? = null
+
     fun setOnItemClickListener(listener: (ModelFlower) -> Unit) {
         onItemClick = listener
     }
-
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
         return MyViewHolder(
             ItemFlowerBinding.inflate(

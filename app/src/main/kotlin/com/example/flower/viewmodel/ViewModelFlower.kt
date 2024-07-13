@@ -1,54 +1,59 @@
 package com.example.flower.viewmodel
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.flower.model.ModelFlower
 import com.example.flower.repository.RepositoryFlower
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class ViewModelFlower @Inject constructor(private val repository: RepositoryFlower) : ViewModel() {
 
-    private val _isEmpty = MutableLiveData<Boolean>()
-    private val _isLoading = MutableLiveData<Boolean>()
-    private val _isNoNetwork = MutableLiveData<Boolean>()
-    private val _flowerData = MutableLiveData<List<ModelFlower>>()
+    private val _isEmpty = MutableStateFlow(false)
+    private val _isLoading = MutableStateFlow(false)
+    private val _isNoNetwork = MutableStateFlow(false)
+    private val _flowerData = MutableStateFlow<List<ModelFlower>>(emptyList())
 
-    val isEmpty: LiveData<Boolean> = _isEmpty
-    val isLoading: LiveData<Boolean> = _isLoading
-    val isNoNetwork: LiveData<Boolean> = _isNoNetwork
-    val flowerData: LiveData<List<ModelFlower>> = _flowerData
+    val isEmpty: StateFlow<Boolean> = _isEmpty
+    val isLoading: StateFlow<Boolean> = _isLoading
+    val isNoNetwork: StateFlow<Boolean> = _isNoNetwork
+    val flowerData: StateFlow<List<ModelFlower>> = _flowerData
 
     init {
         fetchFlower()
     }
 
     fun fetchFlower() {
-        _isLoading.value = true
-        _isNoNetwork.value = false
-        _isEmpty.value = false
         viewModelScope.launch {
-            try {
-                val response = repository.getFlower()
-                if (response.isSuccessful) {
-                    val flowers = response.body()
-                    if (flowers.isNullOrEmpty()) {
-                        _isEmpty.postValue(true)
-                    } else {
-                        _flowerData.postValue(response.body())
-                    }
-                } else {
-                    _isNoNetwork.postValue(true)
+            repository.getFlower()
+                .onStart {
+                    _isLoading.value = true
+                    _isNoNetwork.value = false
+                    _isEmpty.value = false
                 }
-            } catch (e: Exception) {
-                _isNoNetwork.postValue(true)
-            } finally {
-                _isLoading.postValue(false)
-            }
+                .catch {
+                    _isNoNetwork.value = true
+                    _isLoading.value = false
+                }
+                .collect { response ->
+                    if (response.isSuccessful) {
+                        val flowers = response.body()
+                        if (flowers.isNullOrEmpty()) {
+                            _isEmpty.value = true
+                        } else {
+                            _flowerData.value = flowers
+                        }
+                    } else {
+                        _isNoNetwork.value = true
+                    }
+                    _isLoading.value = false
+                }
         }
     }
 }

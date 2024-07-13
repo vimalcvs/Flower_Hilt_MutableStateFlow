@@ -8,13 +8,19 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.LinearSnapHelper
 import com.example.flower.R
 import com.example.flower.databinding.ActivityMainBinding
 import com.example.flower.util.Constant.EXTRA_FLOWER
 import com.example.flower.view.adapter.AdapterFlower
 import com.example.flower.viewmodel.ViewModelFlower
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -37,21 +43,41 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         val adapter = AdapterFlower()
         binding.recyclerView.adapter = adapter
-        viewModelFlower.flowerData.observe(this) { dataList ->
-            adapter.setData(dataList)
+
+
+        LinearSnapHelper().attachToRecyclerView(binding.recyclerView)
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModelFlower.flowerData.collectLatest { dataList ->
+                    adapter.setData(dataList)
+                }
+            }
         }
 
-        viewModelFlower.isLoading.observe(this) { isLoading ->
-            binding.pvProgress.visibility = if (isLoading) View.VISIBLE else View.GONE
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModelFlower.isLoading.collectLatest { isLoading ->
+                    binding.pvProgress.visibility = if (isLoading) View.VISIBLE else View.GONE
+                }
+            }
         }
 
-        viewModelFlower.isNoNetwork.observe(this) { isNoNetwork ->
-            binding.tvNoNetwork.visibility = if (isNoNetwork) View.VISIBLE else View.GONE
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModelFlower.isNoNetwork.collectLatest { isNoNetwork ->
+                    binding.tvNoNetwork.visibility = if (isNoNetwork) View.VISIBLE else View.GONE
+                }
+            }
         }
 
-        viewModelFlower.isEmpty.observe(this) { isEmpty ->
-            binding.tvNoData.visibility = if (isEmpty) View.VISIBLE else View.GONE
-            binding.recyclerView.visibility = if (isEmpty) View.GONE else View.VISIBLE
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModelFlower.isEmpty.collectLatest { isEmpty ->
+                    binding.tvNoData.visibility = if (isEmpty) View.VISIBLE else View.GONE
+                    binding.recyclerView.visibility = if (isEmpty) View.GONE else View.VISIBLE
+                }
+            }
         }
 
         viewModelFlower.fetchFlower()
